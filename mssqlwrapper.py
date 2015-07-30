@@ -2,14 +2,18 @@ __author__ = 'Lmai'
 
 import pyodbc
 
-class DB(object):
-    _conn = None
-    def __init__(self):
-        pass
 
-    @staticmethod
-    def get_db(connection_string):
-        pass
+class DB:
 
+    def __init__(self, connection_string):
+        self._conn = pyodbc.connect(connection_string)
+        self._cursor = self._conn.cursor()
 
-conn = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};Server=10.3.8.41\WEBSQL;Database=lonsec;Trusted_Connection=yes;')
+    @classmethod
+    def from_connection_string(cls, connection_string):
+        db_instance = cls(connection_string)
+        return db_instance
+
+    def get_data(self, query, *argv):
+        rows = self._cursor.execute(query, *argv).fetchall()
+        return rows
