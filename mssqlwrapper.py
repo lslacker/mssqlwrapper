@@ -75,15 +75,30 @@ class DB:
 
 class TempTable:
 
+    def __init__(self, tt_name, qty):
+        self.tt_name = tt_name
+        self.qty = qty
+
+    def __str__(self):
+        return self.tt_name
+
+    def __len__(self):
+        return self.qty
+
     @staticmethod
-    def create_from_data(db_instance, data, create_qry):
-        table_name = '#tmp_' + uuid.uuid4().hex.upper()[:16]
+    def get_tt_name():
+        return '#tmp_' + uuid.uuid4().hex.upper()[:16]
+
+    @classmethod
+    def create_from_data(cls, db_instance, data, create_qry):
+        table_name = TempTable.get_tt_name()
         db_instance.execute(create_qry.format(table_name=table_name))
         fields = db_instance.sp_columns(table_name+'%')
         no_of_fields = len(fields)
-
         db_instance.executemany('insert into {table_name} values({fields})'
                                 .format(table_name=table_name,
                                         fields=','.join(['?']*no_of_fields)), data)
-        return table_name
+        qty = db_instance.get_one_value('select count(*) from {}'.format(table_name))
+
+        return cls(table_name, qty)
 
