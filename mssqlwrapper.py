@@ -60,26 +60,29 @@ class DB:
         self._cursor.executemany(query, list_of_tuple)
         return self._cursor.rowcount
 
-    def sp_columns(self, table_name, catalog=None, schema=None, column=None):
-        logging.debug('lan=%s' % table_name)
-        return [row.column_name for row in self._cursor.columns(table_name)]
+    def sp_columns(self, table_name):
+        if '#' in table_name:
+            query = '''
+            select c.name as column_name from tempdb.sys.columns c
+            inner join tempdb.sys.tables t ON c.object_id = t.object_id
+            where t.name like ?
+            '''
+            self._cursor.execute(query, table_name+'%')
+            return [row.column_name for row in self._cursor.fetchall()]
+        else:
+            return [row.column_name for row in self._cursor.columns(table_name)]
 
 
 class TempTable:
 
     @staticmethod
     def create_from_data(db_instance, data, create_qry):
-        table_name = '#tmp_' + uuid.uuid4().get_hex().upper()[:16]
+        table_name = '#tmp_' + uuid.uuid4().hex.upper()[:16]
         db_instance.execute(create_qry.format(table_name=table_name))
-        rows = db_instance.sp_columns(table_name+'%')
-        print(rows)
-        no_of_fields = db_instance.get_one_value('''\
-        SELECT count(*)
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_NAME like ?
-        ''', table_name+'%')
+        fields = db_instance.sp_columns(table_name+'%')
+        no_of_fields = len(fields)
 
-        db_instance.executemany('insert into {table_name} values({fields})' \
+        db_instance.executemany('insert into {table_name} values({fields})'
                                 .format(table_name=table_name,
                                         fields=','.join(['?']*no_of_fields)), data)
         return table_name
