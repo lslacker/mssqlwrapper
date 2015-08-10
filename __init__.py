@@ -1,2 +1,2 @@
 __author__ = 'Lmai'
-from .mssqlwrapper import DB
+from .mssqlwrapper import DB, TempTable
