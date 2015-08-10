@@ -75,7 +75,7 @@ class DB:
             return [row.column_name for row in self._cursor.columns(table_name)]
 
     def commit(self):
-        self.cursor.commit()
+        self._cursor.commit()
 
 class TempTable:
 
