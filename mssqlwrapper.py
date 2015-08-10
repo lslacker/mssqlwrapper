@@ -55,6 +55,8 @@ class DB:
         return self._cursor.rowcount
 
     def executemany(self, query, list_of_tuple):
+        if not isinstance(list_of_tuple, list):
+            list_of_tuple = list(list_of_tuple)
         if self.debug:
             logging.debug(self.check_sql_string(query, list_of_tuple))
         self._cursor.executemany(query, list_of_tuple)
@@ -72,6 +74,8 @@ class DB:
         else:
             return [row.column_name for row in self._cursor.columns(table_name)]
 
+    def commit(self):
+        self.cursor.commit()
 
 class TempTable:
 
