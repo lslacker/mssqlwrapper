@@ -9,6 +9,8 @@ Would like to log the query like psycopg2 modgrify
 http://stackoverflow.com/questions/5266430/how-to-see-the-real-sql-query-in-python-cursor-execute
 '''
 
+logger = logging.getLogger(__name__)
+
 
 class DB:
 
@@ -37,32 +39,42 @@ class DB:
 
     def get_one_value(self, query, *argv):
         if self.debug:
-            logging.debug(self.check_sql_string(query, argv))
+            logger.debug(self.check_sql_string(query, argv))
         row = self._cursor.execute(query, *argv).fetchone()
         return row[0]
 
     def get_data(self, query, *argv):
         if self.debug:
-            logging.debug(self.check_sql_string(query, argv))
+            logger.debug(self.check_sql_string(query, argv))
         rows = self._cursor.execute(query, *argv).fetchall()
         return rows
 
     def execute(self, query, *argv):
         if self.debug:
-            logging.debug(self.check_sql_string(query, argv))
+            logger.debug(self.check_sql_string(query, argv))
 
         self._cursor.execute(query)
+
+        logger.debug(dir(self._cursor))
+        logger.debug(self._cursor.tables())
         return self._cursor.rowcount
 
     def executemany(self, query, list_of_tuple):
         if not isinstance(list_of_tuple, list):
             list_of_tuple = list(list_of_tuple)
         if self.debug:
-            logging.debug(self.check_sql_string(query, list_of_tuple))
+            logger.debug(self.check_sql_string(query, list_of_tuple))
         self._cursor.executemany(query, list_of_tuple)
         return self._cursor.rowcount
 
     def sp_columns(self, table_name):
+        try:
+            catalog, schema, table_name = table_name.split('.')
+            schema = schema or 'dbo'
+        except ValueError:
+            catalog = None
+            schema = None
+
         if '#' in table_name:
             query = '''
             select c.name as column_name from tempdb.sys.columns c
@@ -72,7 +84,7 @@ class DB:
             self._cursor.execute(query, table_name+'%')
             return [row.column_name for row in self._cursor.fetchall()]
         else:
-            return [row.column_name for row in self._cursor.columns(table_name)]
+            return [row.column_name for row in self._cursor.columns(table_name, catalog=catalog, schema=schema)]
 
     def commit(self):
         self._cursor.commit()
