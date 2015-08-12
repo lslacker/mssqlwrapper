@@ -4,6 +4,8 @@ import pyodbc
 import logging
 import uuid
 import itertools
+import re
+
 '''
 Would like to log the query like psycopg2 modgrify
 http://stackoverflow.com/questions/5266430/how-to-see-the-real-sql-query-in-python-cursor-execute
@@ -13,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class DB:
-
     def __init__(self, connection_string):
         self._conn = pyodbc.connect(connection_string)
         self._cursor = self._conn.cursor()
@@ -30,11 +31,11 @@ class DB:
         sql = sql.replace("?", unique)
         rows = values
         if rows:
-            if not all(isinstance(e, (list, tuple)) for e in values):   # debug executemany
+            if not all(isinstance(e, (list, tuple)) for e in values):  # debug executemany
                 rows = [values]
             a = [[sql.replace(unique, repr(v), 1) for v in row] for row in rows]
             a = itertools.chain(*a)
-            return '\n'+'\n'.join(a)
+            return '\n' + '\n'.join(a)
         return None
 
     def get_one_value(self, query, *argv):
@@ -76,14 +77,13 @@ class DB:
         except ValueError:
             pass
 
-
         if '#' in table_name:
             query = '''
             select c.name as column_name from tempdb.sys.columns c
             inner join tempdb.sys.tables t ON c.object_id = t.object_id
             where t.name like ?
             '''
-            self._cursor.execute(query, table_name+'%')
+            self._cursor.execute(query, table_name + '%')
             return [row.column_name for row in self._cursor.fetchall()]
         else:
             try:
@@ -92,11 +92,14 @@ class DB:
             except TypeError:
                 return [row.column_name for row in self._cursor.columns(table_name)]
 
+    def get_count_from(self, table_name):
+        return self.get_one_value('select count(*) from {}'.format(table_name))
+
     def commit(self):
         self._cursor.commit()
 
-class TempTable:
 
+class TempTable:
     def __init__(self, tt_name, qty):
         self.tt_name = tt_name
         self.qty = qty
@@ -115,12 +118,23 @@ class TempTable:
     def create_from_data(cls, db_instance, data, create_qry):
         table_name = TempTable.get_tt_name()
         db_instance.execute(create_qry.format(table_name=table_name))
-        fields = db_instance.sp_columns(table_name+'%')
+        fields = db_instance.sp_columns(table_name + '%')
         no_of_fields = len(fields)
         db_instance.executemany('insert into {table_name} values({fields})'
                                 .format(table_name=table_name,
-                                        fields=','.join(['?']*no_of_fields)), data)
-        qty = db_instance.get_one_value('select count(*) from {}'.format(table_name))
+                                        fields=','.join(['?'] * no_of_fields)), data)
+        qty = db_instance.get_count_from(table_name)
 
         return cls(table_name, qty)
 
+    @classmethod
+    def create_from_query(cls, db_instance, qry):
+        table_name = TempTable.get_tt_name()
+
+        qry = re.sub(r'(?:\s+|\n)from', ' into {} from'.format(table_name), qry, count=1, flags=re.IGNORECASE | re.MULTILINE)
+
+        db_instance.execute(qry)
+
+        qty = db_instance.get_count_from(table_name)
+
+        return cls(table_name, qty)
