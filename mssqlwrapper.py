@@ -68,12 +68,14 @@ class DB:
         return self._cursor.rowcount
 
     def sp_columns(self, table_name):
+        catalog = None
+        schema = None
         try:
             catalog, schema, table_name = table_name.split('.')
             schema = schema or 'dbo'
         except ValueError:
-            catalog = None
-            schema = None
+            pass
+
 
         if '#' in table_name:
             query = '''
@@ -84,7 +86,11 @@ class DB:
             self._cursor.execute(query, table_name+'%')
             return [row.column_name for row in self._cursor.fetchall()]
         else:
-            return [row.column_name for row in self._cursor.columns(table_name, catalog=catalog, schema=schema)]
+            try:
+                # WIERD: if catalog and schema is none, we can't not pass it
+                return [row.column_name for row in self._cursor.columns(table_name, catalog, schema)]
+            except TypeError:
+                return [row.column_name for row in self._cursor.columns(table_name)]
 
     def commit(self):
         self._cursor.commit()
