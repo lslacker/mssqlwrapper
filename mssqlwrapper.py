@@ -56,8 +56,6 @@ class DB:
 
         self._cursor.execute(query)
 
-        logger.debug(dir(self._cursor))
-        logger.debug(self._cursor.tables())
         return self._cursor.rowcount
 
     def executemany(self, query, list_of_tuple):
