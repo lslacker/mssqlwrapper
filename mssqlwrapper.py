@@ -42,7 +42,7 @@ class DB:
         if self.debug:
             logger.debug(self.check_sql_string(query, argv))
         row = self._cursor.execute(query, *argv).fetchone()
-        return row[0]
+        return row[0] if row else None
 
     def get_data(self, query, *argv):
         if self.debug:
