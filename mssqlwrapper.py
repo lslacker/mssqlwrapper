@@ -47,8 +47,17 @@ class DB:
     def get_data(self, query, *argv):
         if self.debug:
             logger.debug(self.check_sql_string(query, argv))
-        rows = self._cursor.execute(query, *argv).fetchall()
-        return rows
+        return self._cursor.execute(query, *argv).fetchall()
+
+    def __iter__(self):
+        while self._cursor.nextset():
+            try:
+                # select query
+                rows = self._cursor.fetchall()
+                yield rows
+            except pyodbc.ProgrammingError:
+                # update, delete, insert query
+                yield self._cursor.rowcount
 
     def execute(self, query, *argv):
         if self.debug:
@@ -65,13 +74,6 @@ class DB:
             logger.debug(self.check_sql_string(query, list_of_tuple))
         self._cursor.executemany(query, list_of_tuple)
         return self._cursor.rowcount
-
-    def callproc(self, proc_name, *args):
-        # SQL Server format
-        self._cursor.execute("exec {proc_name}{params!r}'.format(proc_name=proc_name, params=args)")
-
-        return self._cursor.fetchall()
-
 
     def sp_columns(self, table_name):
         catalog = None
