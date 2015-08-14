@@ -66,6 +66,13 @@ class DB:
         self._cursor.executemany(query, list_of_tuple)
         return self._cursor.rowcount
 
+    def callproc(self, proc_name, *args):
+        # SQL Server format
+        self._cursor.execute("exec {proc_name}{params!r}'.format(proc_name=proc_name, params=args)")
+
+        return self._cursor.fetchall()
+
+
     def sp_columns(self, table_name):
         catalog = None
         schema = None
