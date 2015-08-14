@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class DB:
+
+    one_value = False
+
     def __init__(self, connection_string):
         self._conn = pyodbc.connect(connection_string)
         self._cursor = self._conn.cursor()
@@ -50,14 +53,19 @@ class DB:
         return self._cursor.execute(query, *argv).fetchall()
 
     def __iter__(self):
-        while self._cursor.nextset():
+        return self
+
+    def __next__(self):
+        if self._cursor.nextset():
             try:
                 # select query
                 rows = self._cursor.fetchall()
-                yield rows
             except pyodbc.ProgrammingError:
                 # update, delete, insert query
-                yield self._cursor.rowcount
+                rows = self._cursor.rowcount
+            return rows
+        else:
+            raise StopIteration
 
     def execute(self, query, *argv):
         if self.debug:
