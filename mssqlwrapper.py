@@ -113,6 +113,10 @@ class DB:
     def commit(self):
         self._cursor.commit()
 
+    def close(self):
+        self._cursor.close()
+        self._conn.close()
+
 
 class TempTable:
     def __init__(self, tt_name, qty):
