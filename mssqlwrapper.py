@@ -71,7 +71,7 @@ class DB:
         if self.debug:
             logger.debug(self.check_sql_string(query, argv))
 
-        self._cursor.execute(query)
+        self._cursor.execute(query, argv)
 
         return self._cursor.rowcount
 
